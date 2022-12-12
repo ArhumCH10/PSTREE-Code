@@ -1,0 +1,64 @@
+#include<stdio.h>
+#include<stdlib.h>
+#include<unistd.h>
+#include<fcntl.h>
+#include<wait.h>
+#include <sys/types.h>
+
+//pstree -p | grep "v" | sort | wc -l > output.txt
+
+int main()
+{
+   int fd1[2];
+   int fd2[2];
+   int fd3[2];
+   pipe(fd1);
+   pipe(fd2);
+   pipe(fd3);
+      
+   pid_t pid1 =-1,pid2 = -1,pid3 = -1;
+   ((pid1 = fork()) && (pid2 = fork()) && (pid3 = fork()));
+    
+   if (pid1 > 0 && pid2 > 0 && pid3 > 0)
+   {
+       close(fd1[0]);
+       close(fd2[1]);
+       close(fd2[0]);
+       close(fd3[1]);
+       close(fd3[0]);
+       dup2(fd1[1],1);
+       execlp("pstree","pstree","-p",NULL);
+   }
+   else if (pid1 == 0)
+   {
+       close(fd1[1]);
+       close(fd2[0]);
+       close(fd3[1]);
+       close(fd3[0]);
+       dup2(fd1[0],0);
+       dup2(fd2[1],1);
+       execlp("grep","grep","v",NULL);
+   }
+   else if (pid2 == 0)
+   {
+       close(fd1[0]);
+       close(fd3[0]);
+       close(fd1[1]);
+       close(fd2[1]);
+       dup2(fd2[0],0);
+       dup2(fd3[1],1);
+       execlp("sort", "sort",NULL);
+   }
+   else if (pid3 == 0)
+   {
+      close(fd1[0]);
+      close(fd1[1]);
+      close(fd2[0]);
+      close(fd2[1]);
+      close(fd3[1]);
+      dup2(fd3[0],0);
+      int fd = open("output.txt",O_CREAT | O_WRONLY,0777);
+      dup2(fd,1);
+      execlp("wc","wc","-l",NULL);
+   }
+}
